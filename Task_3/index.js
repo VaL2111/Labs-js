@@ -5,12 +5,10 @@ async function promiseFilterWithLimitCancellable(array, limit, signal) {
 	for (const item of array) {
 		checkCancellation(signal);
 
-		const promise = (async () => {
-			await new Promise(resolve => setTimeout(resolve, 500));
-			checkCancellation(signal);
-			const isEven = item % 2 === 0;
-			return isEven ? item : null;
-		})();
+		const promise = isEvenPromise(item, signal).catch(error => {
+			console.error(`Помилка обробки елемента "${item}":`, error.message);
+			return null;
+		});
 
 		results.push(promise);
 		executing.push(promise);
@@ -23,9 +21,24 @@ async function promiseFilterWithLimitCancellable(array, limit, signal) {
 	}
 
 	const resolvedResults = await Promise.all(results);
-	const filteredResolvedResults = resolvedResults.filter(item => item !== null);
 
-	return filteredResolvedResults;
+	return resolvedResults.filter(item => item !== null);
+}
+
+function isEvenPromise(item, signal) {
+	return new Promise((resolve, reject) => {
+		setTimeout(() => {
+
+			checkCancellation(signal);
+
+			if (typeof item !== "number") {
+				reject(new Error(`"${item}" не є числом`));
+			} else {
+				const isEven = item % 2 === 0;
+				resolve(isEven ? item : null);
+			}
+		}, 500);
+	});
 }
 
 function checkCancellation(signal) {
@@ -46,7 +59,7 @@ function createAbortController(timeout) {
 }
 
 async function demoWithAbort() {
-	const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+	const numbers = [1, 2, "hello", 4, "world", 6, 7, 8, 9, 10];
 	const abortDelay = 1000;
 	const signal = createAbortController(abortDelay);
 	const parallelLimit = 2;
