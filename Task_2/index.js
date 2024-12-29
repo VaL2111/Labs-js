@@ -1,5 +1,6 @@
 async function promiseFilter(array, filterFunc, delay = 0) {
 	const results = [];
+	const errors = [];
 
 	for (const item of array) {
 		if (delay > 0) {
@@ -7,7 +8,7 @@ async function promiseFilter(array, filterFunc, delay = 0) {
 		}
 
 		const promise = filterFunc(item).catch(error => {
-			console.error(`Помилка обробки елемента "${item}":`, error.message);
+			errors.push({ item, error });
 			return null;
 		});
 
@@ -16,16 +17,20 @@ async function promiseFilter(array, filterFunc, delay = 0) {
 
 	const resolvedResults = await Promise.all(results);
 
-	return resolvedResults.filter(item => item !== null);
+	return {
+		errors: errors.length > 0 ? errors : null,
+		results: resolvedResults.filter(item => item !== null),
+	};
 }
 
 async function promiseFilterWithLimit(array, filterFunc, limit) {
 	const results = [];
+	const errors = [];
 	const executing = [];
 
 	for (const item of array) {
 		const promise = filterFunc(item).catch(error => {
-			console.error(`Помилка обробки елемента "${item}":`, error.message);
+			errors.push({ item, error });
 			return null;
 		});
 
@@ -41,7 +46,10 @@ async function promiseFilterWithLimit(array, filterFunc, limit) {
 
 	const resolvedResults = await Promise.all(results);
 
-	return resolvedResults.filter(item => item !== null);
+	return {
+		errors: errors.length > 0 ? errors : null,
+		results: resolvedResults.filter(item => item !== null),
+	};
 }
 
 function isEvenPromise(item) {
@@ -61,8 +69,12 @@ function demoWithPromise() {
 	const numbers = [1, 2, "hello", 4, "world", 6, 7, 8, 9, 10];
 	const delay = 200;
 
-	promiseFilter(numbers, isEvenPromise, delay).then(filteredNumbers => {
-		console.log("Результат фільтрування через Promise: ", filteredNumbers);
+	promiseFilter(numbers, isEvenPromise, delay).then(({ errors, results }) => {
+		if (errors) {
+			console.log("Помилки при фільтруванні: ", errors);
+		}
+
+		console.log("Результат фільтрування через Promise: ", results);
 	});
 }
 
@@ -70,16 +82,26 @@ async function demoWithAsyncAwait() {
 	const numbers = [1, 2, "hello", 4, "world", 6, 7, 8, 9, 10];
 	const delay = 200;
 
-	const filteredNumbers = await promiseFilter(numbers, isEvenPromise, delay);
-	console.log("Результат фільтрування через Async/Await: ", filteredNumbers);
+	const { errors, results } = await promiseFilter(numbers, isEvenPromise, delay);
+
+	if (errors) {
+		console.log("Помилки при фільтруванні: ", errors);
+	}
+
+	console.log("Результат фільтрування через Async/Await: ", results);
 }
 
 async function demoWithParallelism() {
 	const numbers = [1, 2, "hello", 4, "world", 6, 7, 8, 9, 10];
 	const parallelLimit = 2;
 
-	const filteredNumbers = await promiseFilterWithLimit(numbers, isEvenPromise, parallelLimit);
-	console.log("Результат фільтрування з паралельністю: ", filteredNumbers);
+	const { errors, results } = await promiseFilterWithLimit(numbers, isEvenPromise, parallelLimit);
+
+	if (errors) {
+		console.log("Помилки при фільтруванні: ", errors);
+	}
+
+	console.log("Результат фільтрування з паралельністю:", results);
 }
 
 demoWithPromise();

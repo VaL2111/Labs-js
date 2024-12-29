@@ -1,11 +1,12 @@
 function asyncFilter(array, asyncCallback, finalCallback, delay = 0) {
 	const results = [];
+	const errors = [];
 	let processed = 0;
 
 	array.forEach((item, index) => {
 		asyncCallback(item, (error, include) => {
 			if (error) {
-				console.error(`Помилка обробки елемента ${item}:`, error);
+				errors.push({ item, error });
 				results[index] = null;
 			} else if (include) {
 				results[index] = item;
@@ -17,7 +18,10 @@ function asyncFilter(array, asyncCallback, finalCallback, delay = 0) {
 				processed++;
 
 				if (processed === array.length) {
-					finalCallback(results.filter((item) => item !== null));
+					finalCallback(
+						errors.length > 0 ? errors : null, 
+						results.filter((item) => item !== null)
+					);
 				}
 			}, delay);
 		});
@@ -37,7 +41,7 @@ function isEvenCallback(num, callback) {
 }
 
 function demo() {
-	const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+	const numbers = [1, 2, "hello", 4, "world", 6, 7, 8, 9, 10];
 	const delayBetweenItems = 200;
 
 	console.log("Фільтруємо парні числа асинхронно.");
@@ -45,8 +49,12 @@ function demo() {
 	asyncFilter(
 		numbers,
 		isEvenCallback,
-		(filteredNumbers) => {
-			console.log("Результат фільтрування:", filteredNumbers);
+		(errors, filteredNumbers) => {
+			if (errors) {
+				console.log("Помилки при фільтруванні: ", errors);
+			}
+
+			console.log("Результат фільтрування: ", filteredNumbers);
 		},
 		delayBetweenItems
 	);
